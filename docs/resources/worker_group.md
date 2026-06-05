@@ -37,11 +37,14 @@ resource "vastai_worker_group" "llm_workers" {
 
 ### Optional
 
+- `cold_mult` (Number) Cold capacity target as a multiple of hot capacity target.
 - `cold_workers` (Number) Minimum cold workers for this worker group.
 - `endpoint_name` (String) Name of the parent endpoint (computed from endpoint_id if not set).
 - `gpu_ram` (Number) Estimated GPU RAM requirement in GB.
 - `launch_args` (String) Instance launch arguments string.
+- `min_load` (Number) Minimum floor load in performance units/s for this worker group.
 - `search_params` (String) Offer search filter string (e.g. 'gpu_ram>=23 num_gpus=2 gpu_name=RTX_4090'). The API may apply default filters (verified=True rentable=True rented=False).
+- `target_util` (Number) Target capacity utilization fraction for this worker group.
 - `template_hash` (String) Template hash for worker instances. Either template_hash or template_id must be provided.
 - `template_id` (Number) Numeric template ID for worker instances. Either template_hash or template_id must be provided.
 - `test_workers` (Number) Number of workers for initial performance estimate (default: 3).
