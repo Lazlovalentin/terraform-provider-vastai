@@ -267,6 +267,14 @@ func (r *EndpointResource) Read(ctx context.Context, req resource.ReadRequest, r
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	// Crossplane-friendly: when the upstream ID has not been populated yet
+	// (e.g. the managed resource was just created without an external-name
+	// annotation), tell the framework the resource is absent so Create runs.
+	if model.ID.IsNull() || model.ID.ValueString() == "" {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
 
 	// Configure timeout
 	readTimeout, diags := model.Timeouts.Read(ctx, 2*time.Minute)
@@ -278,11 +286,16 @@ func (r *EndpointResource) Read(ctx context.Context, req resource.ReadRequest, r
 	ctx, cancel := context.WithTimeout(ctx, readTimeout)
 	defer cancel()
 
-	id, err := strconv.Atoi(model.ID.ValueString())
+	idStr := model.ID.ValueString()
+	if idStr == "" {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Parsing Endpoint ID",
-			fmt.Sprintf("Could not parse endpoint ID %q as integer: %s", model.ID.ValueString(), err),
+			fmt.Sprintf("Could not parse endpoint ID %q as integer: %s", idStr, err),
 		)
 		return
 	}

@@ -281,6 +281,14 @@ func (r *TemplateResource) Read(ctx context.Context, req resource.ReadRequest, r
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	// Crossplane-friendly: when the upstream ID has not been populated yet
+	// (e.g. the managed resource was just created without an external-name
+	// annotation), tell the framework the resource is absent so Create runs.
+	if model.ID.IsNull() || model.ID.ValueString() == "" {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
 
 	// Configure timeout
 	readTimeout, diags := model.Timeouts.Read(ctx, 5*time.Minute)
