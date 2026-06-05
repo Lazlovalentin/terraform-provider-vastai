@@ -537,7 +537,6 @@ func (r *InstanceResource) Read(ctx context.Context, req resource.ReadRequest, r
 		return
 	}
 
-
 	// Configure timeout
 	readTimeout, diags := model.Timeouts.Read(ctx, defaultOperationTimeout)
 	resp.Diagnostics.Append(diags...)

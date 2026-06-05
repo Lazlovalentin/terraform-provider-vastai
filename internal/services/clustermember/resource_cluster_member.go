@@ -222,7 +222,6 @@ func (r *ClusterMemberResource) Read(ctx context.Context, req resource.ReadReque
 		return
 	}
 
-
 	// Set read timeout
 	readTimeout, diags := model.Timeouts.Read(ctx, 5*time.Minute)
 	resp.Diagnostics.Append(diags...)

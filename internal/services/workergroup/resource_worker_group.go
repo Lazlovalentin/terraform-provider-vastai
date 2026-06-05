@@ -257,7 +257,6 @@ func (r *WorkerGroupResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-
 	// Configure timeout
 	readTimeout, diags := model.Timeouts.Read(ctx, 2*time.Minute)
 	resp.Diagnostics.Append(diags...)

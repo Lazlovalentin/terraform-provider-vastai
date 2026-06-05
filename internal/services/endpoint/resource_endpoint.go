@@ -275,7 +275,6 @@ func (r *EndpointResource) Read(ctx context.Context, req resource.ReadRequest, r
 		return
 	}
 
-
 	// Configure timeout
 	readTimeout, diags := model.Timeouts.Read(ctx, 2*time.Minute)
 	resp.Diagnostics.Append(diags...)

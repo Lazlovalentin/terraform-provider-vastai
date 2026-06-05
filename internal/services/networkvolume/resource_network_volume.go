@@ -264,7 +264,6 @@ func (r *NetworkVolumeResource) Read(ctx context.Context, req resource.ReadReque
 		return
 	}
 
-
 	// Configure timeout
 	readTimeout, diags := model.Timeouts.Read(ctx, 5*time.Minute)
 	resp.Diagnostics.Append(diags...)

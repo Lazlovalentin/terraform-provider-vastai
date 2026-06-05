@@ -177,7 +177,6 @@ func (r *OverlayResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-
 	// Set read timeout
 	readTimeout, diags := model.Timeouts.Read(ctx, 5*time.Minute)
 	resp.Diagnostics.Append(diags...)
