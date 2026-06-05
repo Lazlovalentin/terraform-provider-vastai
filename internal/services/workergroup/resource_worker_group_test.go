@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 // TestWorkerGroupResource_Metadata verifies the resource type name.
@@ -187,6 +188,49 @@ func TestWorkerGroupResource_SchemaValidators(t *testing.T) {
 	}
 	if len(templateIDAttr.Validators) == 0 {
 		t.Error("template_id should have AtLeastOneOf validator")
+	}
+}
+
+func TestPreserveConfiguredWorkerCount(t *testing.T) {
+	tests := []struct {
+		name       string
+		configured types.Int64
+		apiValue   int
+		want       int64
+	}{
+		{
+			name:       "preserves non-zero configured value when api reports zero",
+			configured: types.Int64Value(1),
+			apiValue:   0,
+			want:       1,
+		},
+		{
+			name:       "keeps explicit configured zero",
+			configured: types.Int64Value(0),
+			apiValue:   0,
+			want:       0,
+		},
+		{
+			name:       "uses non-zero api value",
+			configured: types.Int64Value(1),
+			apiValue:   3,
+			want:       3,
+		},
+		{
+			name:       "uses zero api value when configured is null",
+			configured: types.Int64Null(),
+			apiValue:   0,
+			want:       0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := preserveConfiguredWorkerCount(tt.configured, tt.apiValue)
+			if got.ValueInt64() != tt.want {
+				t.Fatalf("expected %d, got %d", tt.want, got.ValueInt64())
+			}
+		})
 	}
 }
 

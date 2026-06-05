@@ -517,9 +517,14 @@ func readWorkerGroupIntoModel(wg *client.WorkerGroup, model *WorkerGroupResource
 	// (W-3: don't convert 0 to null -- 0 is a valid value from the API)
 	model.GpuRAM = types.Float64Value(wg.GpuRAM)
 
-	// TestWorkers is always set (Computed)
-	model.TestWorkers = types.Int64Value(int64(wg.TestWorkers))
+	model.TestWorkers = preserveConfiguredWorkerCount(model.TestWorkers, wg.TestWorkers)
+	model.ColdWorkers = preserveConfiguredWorkerCount(model.ColdWorkers, wg.ColdWorkers)
+}
 
-	// ColdWorkers: preserve zero values (W-3)
-	model.ColdWorkers = types.Int64Value(int64(wg.ColdWorkers))
+func preserveConfiguredWorkerCount(configured types.Int64, apiValue int) types.Int64 {
+	if apiValue != 0 || configured.IsNull() || configured.IsUnknown() || configured.ValueInt64() == 0 {
+		return types.Int64Value(int64(apiValue))
+	}
+
+	return configured
 }
