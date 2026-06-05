@@ -8,11 +8,6 @@ import (
 // WorkerGroupResourceModel describes the resource data model for vastai_worker_group.
 // Worker groups bind to serverless endpoints and define the compute configuration
 // (template, GPU requirements, search parameters) for inference workloads.
-//
-// Note: Autoscaling parameters (min_load, target_util, cold_mult) are intentionally
-// omitted from this model. Per Pitfall 3 from research, these fields are "not currently
-// used at the workergroup level" -- autoscaling is driven by the parent endpoint.
-// Configure autoscaling via the vastai_endpoint resource instead.
 type WorkerGroupResourceModel struct {
 	// Primary identifier (worker group ID as string for Terraform compatibility)
 	ID types.String `tfsdk:"id"`
@@ -33,8 +28,11 @@ type WorkerGroupResourceModel struct {
 	GpuRAM       types.Float64 `tfsdk:"gpu_ram"`
 
 	// Worker scaling configuration
-	TestWorkers types.Int64 `tfsdk:"test_workers"`
-	ColdWorkers types.Int64 `tfsdk:"cold_workers"`
+	MinLoad     types.Float64 `tfsdk:"min_load"`
+	TargetUtil  types.Float64 `tfsdk:"target_util"`
+	ColdMult    types.Float64 `tfsdk:"cold_mult"`
+	TestWorkers types.Int64   `tfsdk:"test_workers"`
+	ColdWorkers types.Int64   `tfsdk:"cold_workers"`
 
 	// Timeouts
 	Timeouts timeouts.Value `tfsdk:"timeouts"`

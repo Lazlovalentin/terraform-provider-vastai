@@ -39,7 +39,8 @@ func TestWorkerGroupResource_Schema(t *testing.T) {
 	expectedAttrs := []string{
 		"id", "endpoint_id", "endpoint_name", "template_hash",
 		"template_id", "search_params", "launch_args", "gpu_ram",
-		"test_workers", "cold_workers",
+		"min_load", "target_util", "cold_mult", "test_workers",
+		"cold_workers",
 	}
 
 	for _, name := range expectedAttrs {
@@ -154,6 +155,33 @@ func TestWorkerGroupResource_SchemaValidators(t *testing.T) {
 		t.Error("gpu_ram should have validators (AtLeast(0))")
 	}
 
+	// min_load should have AtLeast(0) validator
+	minLoadAttr, ok := s.Attributes["min_load"].(schema.Float64Attribute)
+	if !ok {
+		t.Fatal("min_load is not Float64Attribute")
+	}
+	if len(minLoadAttr.Validators) == 0 {
+		t.Error("min_load should have validators (AtLeast(0))")
+	}
+
+	// target_util should have Between(0, 1) validator
+	targetUtilAttr, ok := s.Attributes["target_util"].(schema.Float64Attribute)
+	if !ok {
+		t.Fatal("target_util is not Float64Attribute")
+	}
+	if len(targetUtilAttr.Validators) == 0 {
+		t.Error("target_util should have validators (Between(0, 1))")
+	}
+
+	// cold_mult should have AtLeast(1) validator
+	coldMultAttr, ok := s.Attributes["cold_mult"].(schema.Float64Attribute)
+	if !ok {
+		t.Fatal("cold_mult is not Float64Attribute")
+	}
+	if len(coldMultAttr.Validators) == 0 {
+		t.Error("cold_mult should have validators (AtLeast(1))")
+	}
+
 	// test_workers should have AtLeast(0) validator
 	testWorkersAttr, ok := s.Attributes["test_workers"].(schema.Int64Attribute)
 	if !ok {
@@ -234,11 +262,9 @@ func TestPreserveConfiguredWorkerCount(t *testing.T) {
 	}
 }
 
-// TestWorkerGroupResource_NoAutoscalingParams verifies that autoscaling params
-// (min_load, target_util, cold_mult) are NOT in the schema.
-// Per Pitfall 3 from research: these are not used at the worker group level.
-// Autoscaling is driven by the parent endpoint.
-func TestWorkerGroupResource_NoAutoscalingParams(t *testing.T) {
+// TestWorkerGroupResource_AutoscalingParams verifies that per-workergroup
+// autoscaling floor params are exposed.
+func TestWorkerGroupResource_AutoscalingParams(t *testing.T) {
 	r := NewWorkerGroupResource()
 	req := resource.SchemaRequest{}
 	var resp resource.SchemaResponse
@@ -246,10 +272,10 @@ func TestWorkerGroupResource_NoAutoscalingParams(t *testing.T) {
 
 	s := resp.Schema
 
-	excludedAttrs := []string{"min_load", "target_util", "cold_mult"}
-	for _, name := range excludedAttrs {
-		if _, ok := s.Attributes[name]; ok {
-			t.Errorf("attribute %s should NOT be in worker group schema (autoscaling is endpoint-level per Pitfall 3)", name)
+	expectedAttrs := []string{"min_load", "target_util", "cold_mult"}
+	for _, name := range expectedAttrs {
+		if _, ok := s.Attributes[name]; !ok {
+			t.Errorf("missing expected autoscaling attribute: %s", name)
 		}
 	}
 }
@@ -303,8 +329,7 @@ func TestWorkerGroupResource_ImplementsConfigure(t *testing.T) {
 	}
 }
 
-// TestWorkerGroupResource_SchemaDescription verifies the resource-level description
-// documents that autoscaling is on the endpoint.
+// TestWorkerGroupResource_SchemaDescription verifies the resource-level description.
 func TestWorkerGroupResource_SchemaDescription(t *testing.T) {
 	r := NewWorkerGroupResource()
 	req := resource.SchemaRequest{}
@@ -317,8 +342,7 @@ func TestWorkerGroupResource_SchemaDescription(t *testing.T) {
 		t.Error("schema should have a non-empty description")
 	}
 
-	// Should mention that autoscaling is at the endpoint level
-	expected := "Autoscaling behavior is controlled at the endpoint level"
+	expected := "per-group autoscaling floor"
 	if s.Description == "" {
 		t.Error("schema description is empty")
 	}

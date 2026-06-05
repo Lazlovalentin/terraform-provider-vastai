@@ -49,8 +49,7 @@ func (r *WorkerGroupResource) Metadata(_ context.Context, req resource.MetadataR
 func (r *WorkerGroupResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Manages a Vast.ai worker group. Worker groups bind to serverless endpoints and define " +
-			"the compute configuration (template, GPU requirements, search parameters). " +
-			"Autoscaling behavior is controlled at the endpoint level via the vastai_endpoint resource.",
+			"the compute configuration (template, GPU requirements, search parameters) and per-group autoscaling floor.",
 
 		Attributes: map[string]schema.Attribute{
 			// Primary identifier
@@ -113,6 +112,30 @@ func (r *WorkerGroupResource) Schema(ctx context.Context, _ resource.SchemaReque
 			},
 
 			// Worker scaling
+			"min_load": schema.Float64Attribute{
+				Description: "Minimum floor load in performance units/s for this worker group.",
+				Optional:    true,
+				Computed:    true,
+				Validators: []validator.Float64{
+					float64validator.AtLeast(0),
+				},
+			},
+			"target_util": schema.Float64Attribute{
+				Description: "Target capacity utilization fraction for this worker group.",
+				Optional:    true,
+				Computed:    true,
+				Validators: []validator.Float64{
+					float64validator.Between(0, 1),
+				},
+			},
+			"cold_mult": schema.Float64Attribute{
+				Description: "Cold capacity target as a multiple of hot capacity target.",
+				Optional:    true,
+				Computed:    true,
+				Validators: []validator.Float64{
+					float64validator.AtLeast(1),
+				},
+			},
 			"test_workers": schema.Int64Attribute{
 				Description: "Number of workers for initial performance estimate (default: 3).",
 				Optional:    true,
@@ -182,8 +205,6 @@ func (r *WorkerGroupResource) Create(ctx context.Context, req resource.CreateReq
 	// Build API request from model
 	createReq := &client.CreateWorkerGroupRequest{
 		EndpointID: int(model.EndpointID.ValueInt64()),
-		// Sensible defaults for API-required autoscaling fields (Pitfall 3:
-		// these are not used at the worker group level, but the API requires them)
 		MinLoad:    0,
 		TargetUtil: 0.9,
 		ColdMult:   2.0,
@@ -206,6 +227,15 @@ func (r *WorkerGroupResource) Create(ctx context.Context, req resource.CreateReq
 	}
 	if !model.GpuRAM.IsNull() && !model.GpuRAM.IsUnknown() {
 		createReq.GpuRAM = model.GpuRAM.ValueFloat64()
+	}
+	if !model.MinLoad.IsNull() && !model.MinLoad.IsUnknown() {
+		createReq.MinLoad = model.MinLoad.ValueFloat64()
+	}
+	if !model.TargetUtil.IsNull() && !model.TargetUtil.IsUnknown() {
+		createReq.TargetUtil = model.TargetUtil.ValueFloat64()
+	}
+	if !model.ColdMult.IsNull() && !model.ColdMult.IsUnknown() {
+		createReq.ColdMult = model.ColdMult.ValueFloat64()
 	}
 	if !model.TestWorkers.IsNull() && !model.TestWorkers.IsUnknown() {
 		createReq.TestWorkers = int(model.TestWorkers.ValueInt64())
@@ -375,6 +405,18 @@ func (r *WorkerGroupResource) Update(ctx context.Context, req resource.UpdateReq
 		v := model.GpuRAM.ValueFloat64()
 		updateReq.GpuRAM = &v
 	}
+	if !model.MinLoad.IsNull() && !model.MinLoad.IsUnknown() {
+		v := model.MinLoad.ValueFloat64()
+		updateReq.MinLoad = &v
+	}
+	if !model.TargetUtil.IsNull() && !model.TargetUtil.IsUnknown() {
+		v := model.TargetUtil.ValueFloat64()
+		updateReq.TargetUtil = &v
+	}
+	if !model.ColdMult.IsNull() && !model.ColdMult.IsUnknown() {
+		v := model.ColdMult.ValueFloat64()
+		updateReq.ColdMult = &v
+	}
 	if !model.TestWorkers.IsNull() && !model.TestWorkers.IsUnknown() {
 		v := int(model.TestWorkers.ValueInt64())
 		updateReq.TestWorkers = &v
@@ -516,6 +558,9 @@ func readWorkerGroupIntoModel(wg *client.WorkerGroup, model *WorkerGroupResource
 	// Optional numeric fields: use unconditional values to preserve zero
 	// (W-3: don't convert 0 to null -- 0 is a valid value from the API)
 	model.GpuRAM = types.Float64Value(wg.GpuRAM)
+	model.MinLoad = types.Float64Value(wg.MinLoad)
+	model.TargetUtil = types.Float64Value(wg.TargetUtil)
+	model.ColdMult = types.Float64Value(wg.ColdMult)
 
 	model.TestWorkers = preserveConfiguredWorkerCount(model.TestWorkers, wg.TestWorkers)
 	model.ColdWorkers = preserveConfiguredWorkerCount(model.ColdWorkers, wg.ColdWorkers)
